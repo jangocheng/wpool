@@ -12,7 +12,7 @@ import (
 const MaxConns = 3
 
 // PacketBufferSize is the maximum number of packets to keep in a data channel
-const PacketBufferSize = 100
+const PacketBufferSize = 1024
 
 // WPool is a connection pool manager for UDP using net.Conn
 type WPool struct {
@@ -83,34 +83,25 @@ func (pool *WPool) ServeCommandChannel() {
 
 // CommandHandler reads data from the connected clients
 func (pool *WPool) CommandHandler(conn net.Conn, connIndex int) {
-	recvChannel := make(chan *wjson.CommPacketJson)
 	buf := make([]byte, 1024)
 	// Goroutine for receiving from client
-	go func() {
-
-		for {
-			n, err := conn.Read(buf)
-			if err != nil {
-				fmt.Println(err)
-				pool.CloseConn(conn, connIndex)
-				return
-			}
-			packet := &wjson.CommPacketJson{}
-			err = json.Unmarshal(buf[:n], packet)
-			if err == nil {
-				recvChannel <- packet
-			} else {
-				fmt.Println(err)
-				pool.CloseConn(conn, connIndex)
-				return
-			}
-		}
-	}()
-
-	// Broadcast recvd command to pod
 	for {
-		packet := <-recvChannel
-		pool.commandIn <- packet
+		n, err := conn.Read(buf)
+		if err != nil {
+			fmt.Println(err)
+			pool.CloseConn(conn, connIndex)
+			return
+		}
+		packet := &wjson.CommPacketJson{}
+		err = json.Unmarshal(buf[:n], packet)
+		if err == nil {
+			pool.commandIn <- packet
+			pool.BroadcastPacket(packet)
+		} else {
+			fmt.Println(err)
+			pool.CloseConn(conn, connIndex)
+			return
+		}
 	}
 }
 
