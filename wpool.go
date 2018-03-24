@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/mogball/wcomms/wjson"
+	"github.com/waterloop/wcomms/wjson"
 )
 
 // MaxConns stores the maximum number of clients allowed to connect
