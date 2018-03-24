@@ -18,7 +18,7 @@ const PacketBufferSize = 100
 type WPool struct {
 	dataAddr    string
 	commandAddr string
-	dataIn      chan *wjson.CommPacketJson
+	commandIn   chan *wjson.CommPacketJson
 	dataOut     chan *wjson.CommPacketJson
 	numConns    int
 	connections []net.Conn
@@ -29,7 +29,7 @@ func CreateWPool(dataAddr string, commandAddr string) *WPool {
 	return &WPool{
 		dataAddr:    dataAddr,
 		commandAddr: commandAddr,
-		dataIn:      make(chan *wjson.CommPacketJson, PacketBufferSize),
+		commandIn:   make(chan *wjson.CommPacketJson, PacketBufferSize),
 		dataOut:     make(chan *wjson.CommPacketJson, PacketBufferSize),
 		numConns:    0,
 		connections: make([]net.Conn, 0),
@@ -107,13 +107,17 @@ func (pool *WPool) CommandHandler(conn net.Conn, connIndex int) {
 		}
 	}()
 
-	// Broadcast recvd command to all clients
-	// TODO: Send to pod
+	// Broadcast recvd command to pod
 	for {
 		packet := <-recvChannel
-		pool.dataIn <- packet
-		pool.BroadcastPacket(packet)
+		pool.commandIn <- packet
 	}
+}
+
+// GetNextCommand gets the next command
+func (pool *WPool) GetNextCommand() *wjson.CommPacketJson {
+	command := <-pool.commandIn
+	return command
 }
 
 // CloseConn closes a TCP connection in the pool
